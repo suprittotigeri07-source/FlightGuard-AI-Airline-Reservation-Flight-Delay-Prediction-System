@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-brand: #244855;
+    --color-brand-hover: #1D3B46;
+    --color-brand-active: #172F38;
+    --color-accent: #E64833;
+    --color-secondary: #874F41;
+    --color-supporting: #90AEAD;
+    --color-cream: #FBE9D0;
+    --color-background: #F8FAFB;
+    --color-surface: #FFFFFF;
+    --color-surface-warm: #FDF7EE;
+    --color-text-primary: #0F172A;
+    --color-text-secondary: #334155;
+    --color-text-muted: #64748B;
+    --color-border: #E2E8F0;
+    --color-success: #16A34A;
+    --color-warning: #EA580C;
+    --color-danger: #E64833;
+    --color-info: #244855;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: #244855;
+    color: #FFFFFF;
+  }
+
+  /* Elegant heading defaults */
+  h1, h2, h3 {
+    font-family: 'DM Serif Display', Georgia, serif;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+}
+
+/* Custom Scrollbar — warm tones */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #244855;
+}
+
+/* Slider progress bar animation */
+@keyframes slider-progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+
+.slider-progress-bar {
+  animation: slider-progress 6s linear;
+}
+
+/* Smooth image zoom on hover */
+.img-zoom {
+  transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.group:hover .img-zoom {
+  transform: scale(1.05);
+}
+
+/* Underline hover effect for nav links */
+.nav-link-underline {
+  position: relative;
+}
+.nav-link-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: #244855;
+  transition: width 0.3s ease;
+}
+.nav-link-underline:hover::after {
+  width: 100%;
+}

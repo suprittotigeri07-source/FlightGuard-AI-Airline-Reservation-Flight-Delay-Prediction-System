@@ -1,0 +1,11 @@
+from app.db.session import Base  # noqa
+from app.models.role import Role  # noqa
+from app.models.user import User  # noqa
+from app.models.airline import Airline  # noqa
+from app.models.airport import Airport  # noqa
+from app.models.aircraft import Aircraft  # noqa
+from app.models.flight import Flight  # noqa
+from app.models.prediction import DelayPrediction  # noqa
+from app.models.reservation import Reservation  # noqa
+from app.models.passenger import Passenger  # noqa
+from app.models.audit_log import AuditLog  # noqa
