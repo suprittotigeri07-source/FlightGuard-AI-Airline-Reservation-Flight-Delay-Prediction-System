@@ -54,7 +54,20 @@ export const FlightCard: React.FC<FlightCardProps> = ({ flight }) => {
               {flight.airline.code}
             </div>
             <div>
-              <div className="text-sm font-bold text-content-primary">{flight.airline.name}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-content-primary">{flight.airline.name}</span>
+                {flight.status === 'EN_ROUTE' && (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                    Airborne
+                  </span>
+                )}
+                {flight.status === 'DELAYED' && (
+                  <span className="inline-flex items-center gap-1 text-[9px] font-bold text-accent bg-accent-soft px-1.5 py-0.5 rounded border border-accent/20">
+                    Delayed
+                  </span>
+                )}
+              </div>
               <div className="text-xs text-content-muted font-medium">Flight {flight.flight_number} • {flight.aircraft.model}</div>
             </div>
           </div>

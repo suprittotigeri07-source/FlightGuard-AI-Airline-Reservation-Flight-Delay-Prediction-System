@@ -47,21 +47,30 @@ class MLPredictionService:
         return cls._instance
 
     def _load_model(self):
-        model_path = settings.ML_MODEL_PATH
-        if not os.path.isabs(model_path):
-            base_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
-            model_path = os.path.join(base_dir, model_path)
+        candidate_paths = [
+            settings.ML_MODEL_PATH,
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", settings.ML_MODEL_PATH)),
+            os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", settings.ML_MODEL_PATH)),
+            os.path.abspath(os.path.join(os.getcwd(), settings.ML_MODEL_PATH)),
+            os.path.abspath(os.path.join(os.getcwd(), "backend", settings.ML_MODEL_PATH)),
+        ]
+        
+        resolved_path = None
+        for path in candidate_paths:
+            if os.path.exists(path):
+                resolved_path = path
+                break
 
-        if os.path.exists(model_path):
+        if resolved_path:
             try:
                 import joblib
-                self._model = joblib.load(model_path)
-                logger.info(f"Loaded trained delay model from {model_path}")
+                self._model = joblib.load(resolved_path)
+                logger.info(f"Loaded trained delay model from {resolved_path}")
             except Exception as e:
-                logger.warning(f"Failed to load delay model from {model_path}: {e}. Fallback engine active.")
+                logger.warning(f"Failed to load delay model from {resolved_path}: {e}. Fallback engine active.")
                 self._model = None
         else:
-            logger.warning(f"Model file not found at {model_path}. Fallback engine active.")
+            logger.warning(f"Model file not found in candidates: {candidate_paths}. Fallback engine active.")
             self._model = None
 
     def predict_delay(

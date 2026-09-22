@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { flightService } from '../../services/flightService';
+import { aeroApiService } from '../../services/aeroApiService';
 import {
   Airport,
   Airline,
@@ -11,7 +12,7 @@ import { FlightSearchForm } from './FlightSearchForm';
 import { FlightFilters } from './FlightFilters';
 import { FlightCard } from './FlightCard';
 import { Button } from '../../components/ui/Button';
-import { Plane, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
+import { Plane, AlertCircle, RefreshCw, ChevronLeft, ChevronRight, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
 
 export const FlightSearchPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -34,8 +35,25 @@ export const FlightSearchPage: React.FC = () => {
 
   const [data, setData] = useState<PaginatedFlightResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isSyncingLive, setIsSyncingLive] = useState<boolean>(false);
+  const [syncToast, setSyncToast] = useState<{ message: string; source: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showFiltersMobile, setShowFiltersMobile] = useState<boolean>(false);
+
+  const handleSyncLive = async () => {
+    setIsSyncingLive(true);
+    setSyncToast(null);
+    try {
+      const res = await aeroApiService.syncLiveFlights(params.origin, 15);
+      setSyncToast({ message: res.message, source: res.source });
+      await executeSearch(params);
+      setTimeout(() => setSyncToast(null), 6000);
+    } catch {
+      setError('Live sync failed. Please check network connectivity or AeroAPI key.');
+    } finally {
+      setIsSyncingLive(false);
+    }
+  };
 
   // Sync params when URL searchParams changes
   useEffect(() => {
@@ -127,13 +145,47 @@ export const FlightSearchPage: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Header Title */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight">Search Flight Schedule</h1>
-        <p className="text-sm text-content-muted mt-1">
-          Explore carrier flights, fare rates, and real-time AI delay probability metrics.
-        </p>
+      {/* Header Title with Live Sync Action */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-content-primary tracking-tight">Search Flight Schedule</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-brand-soft text-brand border border-supporting/40">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live AeroAPI Feed
+            </span>
+          </div>
+          <p className="text-sm text-content-muted mt-1">
+            Real-time live flight radar, dynamic carrier schedules, and XGBoost delay probability metrics.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncLive}
+            isLoading={isSyncingLive}
+            className="border-brand/40 hover:border-brand text-brand hover:bg-brand/5 shadow-xs font-semibold"
+          >
+            <RefreshCw className={`w-4 h-4 mr-1.5 ${isSyncingLive ? 'animate-spin' : ''}`} />
+            Sync Live Flights
+          </Button>
+        </div>
       </div>
+
+      {syncToast && (
+        <div className="p-3.5 bg-cream-soft border border-cream-border rounded-xl flex items-center justify-between text-xs text-secondary-hover shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{syncToast.message}</span>
+            <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-brand text-white">
+              {syncToast.source}
+            </span>
+          </div>
+          <button onClick={() => setSyncToast(null)} className="text-content-muted hover:text-content-primary font-bold ml-2">✕</button>
+        </div>
+      )}
 
       {/* Main Search Form Bar */}
       <FlightSearchForm

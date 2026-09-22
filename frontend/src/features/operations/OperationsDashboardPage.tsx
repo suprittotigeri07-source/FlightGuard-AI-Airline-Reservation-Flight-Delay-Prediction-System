@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { operationsService } from '../../services/operationsService';
+import { aeroApiService } from '../../services/aeroApiService';
 import { OperationsSummary, HighRiskFlightItem } from '../../types/operations';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -13,7 +14,8 @@ import {
   ChevronRight,
   X,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Radio
 } from 'lucide-react';
 
 export const OperationsDashboardPage: React.FC = () => {
@@ -21,9 +23,26 @@ export const OperationsDashboardPage: React.FC = () => {
   const [flights, setFlights] = useState<HighRiskFlightItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  const [isSyncingLive, setIsSyncingLive] = useState<boolean>(false);
+  const [syncNotice, setSyncNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [riskFilter, setRiskFilter] = useState<string>('ALL');
   const [selectedItem, setSelectedItem] = useState<HighRiskFlightItem | null>(null);
+
+  const handleSyncLive = async () => {
+    setIsSyncingLive(true);
+    setSyncNotice(null);
+    try {
+      const res = await aeroApiService.syncLiveFlights(undefined, 10);
+      setSyncNotice(res.message);
+      await fetchData(true);
+      setTimeout(() => setSyncNotice(null), 5000);
+    } catch {
+      setError('AeroAPI live sync failed. Please check connection or API key.');
+    } finally {
+      setIsSyncingLive(false);
+    }
+  };
 
   const fetchData = async (showRefreshSpinner = false) => {
     if (showRefreshSpinner) setIsRefreshing(true);
@@ -95,19 +114,39 @@ export const OperationsDashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncLive}
+            disabled={isSyncingLive}
+            className="border-brand/40 text-brand hover:bg-brand/5 font-semibold text-xs shadow-xs"
+          >
+            <Radio className={`w-3.5 h-3.5 mr-1.5 ${isSyncingLive ? 'animate-pulse text-emerald-600' : ''}`} />
+            {isSyncingLive ? 'Syncing Live Radar...' : 'Sync AeroAPI Feed'}
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={() => fetchData(true)}
             disabled={isRefreshing}
-            className="font-medium"
+            className="font-medium text-xs"
           >
-            <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? 'animate-spin' : ''}`} />
             Refresh Telemetry
           </Button>
         </div>
       </div>
+
+      {syncNotice && (
+        <div className="p-3 bg-cream-soft border border-cream-border text-secondary-hover rounded-xl text-xs font-semibold flex items-center justify-between shadow-xs animate-fade-in">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>{syncNotice}</span>
+          </div>
+          <button onClick={() => setSyncNotice(null)} className="text-content-muted hover:text-content-primary">✕</button>
+        </div>
+      )}
 
       {error && (
         <div className="bg-semantic-danger-soft border border-semantic-danger/30 text-semantic-danger p-4 rounded-xl text-xs font-semibold flex items-center gap-2">

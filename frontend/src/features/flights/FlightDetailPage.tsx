@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { flightService } from '../../services/flightService';
+import { aeroApiService, LiveTelemetryResponse } from '../../services/aeroApiService';
 import { Flight } from '../../types/flight';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -13,7 +14,8 @@ import {
   ArrowLeft,
   AlertCircle,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Radio
 } from 'lucide-react';
 
 export const FlightDetailPage: React.FC = () => {
@@ -22,6 +24,7 @@ export const FlightDetailPage: React.FC = () => {
   const { token: useAuthToken } = useAuth();
 
   const [flight, setFlight] = useState<Flight | null>(null);
+  const [telemetry, setTelemetry] = useState<LiveTelemetryResponse['data'] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [isBookingOpen, setIsBookingOpen] = useState<boolean>(false);
@@ -34,6 +37,14 @@ export const FlightDetailPage: React.FC = () => {
       try {
         const res = await flightService.getFlightById(id);
         setFlight(res);
+        try {
+          const tel = await aeroApiService.getLiveTelemetry(res.flight_number);
+          if (tel && tel.data) {
+            setTelemetry(tel.data);
+          }
+        } catch {
+          // graceful fallback
+        }
       } catch (err: unknown) {
         if (typeof err === 'object' && err !== null && 'response' in err) {
           const axiosErr = err as { response?: { data?: { error?: { message?: string } } } };
@@ -182,6 +193,65 @@ export const FlightDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Live AeroAPI Telemetry Card */}
+      {telemetry && (
+        <div className="bg-surface border border-border rounded-xl p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-md bg-brand-soft text-brand flex items-center justify-center font-bold">
+                <Radio className="w-4 h-4 text-brand animate-pulse" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-content-primary">FlightAware AeroAPI Live Telemetry</h3>
+                <span className="text-[11px] text-content-muted">Real-Time Aircraft Radar Tracking Feed</span>
+              </div>
+            </div>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              {telemetry.status || 'Active Flight Radar'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 py-2 text-xs">
+            <div className="bg-surface-subtle p-3.5 rounded-lg border border-border">
+              <div className="text-content-muted font-medium mb-1">Radar Altitude</div>
+              <div className="text-lg font-black text-content-primary">
+                {telemetry.altitude_feet ? `${telemetry.altitude_feet.toLocaleString()} ft` : 'Ground (Taxi)'}
+              </div>
+              <div className="text-[10px] text-content-muted mt-0.5">Cruising Level</div>
+            </div>
+
+            <div className="bg-surface-subtle p-3.5 rounded-lg border border-border">
+              <div className="text-content-muted font-medium mb-1">Groundspeed</div>
+              <div className="text-lg font-black text-content-primary">
+                {telemetry.groundspeed_knots ? `${telemetry.groundspeed_knots} kts` : '0 kts'}
+              </div>
+              <div className="text-[10px] text-content-muted mt-0.5">Airspeed Telemetry</div>
+            </div>
+
+            <div className="bg-surface-subtle p-3.5 rounded-lg border border-border">
+              <div className="text-content-muted font-medium mb-1">Flight Progress</div>
+              <div className="text-lg font-black text-brand">
+                {telemetry.progress_percent ?? 50}%
+              </div>
+              <div className="w-full bg-border h-1.5 rounded-full mt-1.5 overflow-hidden">
+                <div className="bg-brand h-full rounded-full" style={{ width: `${telemetry.progress_percent ?? 50}%` }}></div>
+              </div>
+            </div>
+
+            <div className="bg-surface-subtle p-3.5 rounded-lg border border-border">
+              <div className="text-content-muted font-medium mb-1">Departure Offset</div>
+              <div className="text-lg font-black text-content-primary">
+                {telemetry.departure_delay && telemetry.departure_delay > 0
+                  ? `+${Math.round(telemetry.departure_delay / 60)} min`
+                  : 'On Time'}
+              </div>
+              <div className="text-[10px] text-semantic-success mt-0.5">Live ATC Gate Log</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ML Delay Prediction Analysis Card */}
       {pred && (

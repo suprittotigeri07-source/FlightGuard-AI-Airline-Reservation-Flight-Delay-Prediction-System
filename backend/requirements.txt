@@ -6,6 +6,7 @@ email-validator>=2.1.0
 sqlalchemy>=2.0.25
 alembic>=1.13.1
 psycopg2-binary>=2.9.9
+pg8000>=1.31.0
 pyjwt>=2.8.0
 passlib[bcrypt]>=1.7.4
 python-multipart>=0.0.6

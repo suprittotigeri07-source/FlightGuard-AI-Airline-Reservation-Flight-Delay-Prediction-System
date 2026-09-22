@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminService } from '../../services/adminService';
 import { flightService } from '../../services/flightService';
+import { aeroApiService, AeroAPIStatus } from '../../services/aeroApiService';
 import { UserAdmin, AuditLog, FlightCreatePayload, AirportCreatePayload, AirlineCreatePayload } from '../../types/admin';
 import { Flight, Airport, Airline } from '../../types/flight';
 import { Button } from '../../components/ui/Button';
@@ -15,11 +16,15 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  Building2
+  Building2,
+  Radio,
+  Key,
+  RefreshCw,
+  ShieldCheck
 } from 'lucide-react';
 
 export const AdminPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'flights' | 'fleet' | 'audit'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'flights' | 'fleet' | 'audit' | 'aeroapi'>('users');
 
   // Users tab state
   const [users, setUsers] = useState<UserAdmin[]>([]);
@@ -52,6 +57,15 @@ export const AdminPage: React.FC = () => {
   // Audit Logs state
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [isAuditLoading, setIsAuditLoading] = useState<boolean>(false);
+
+  // AeroAPI Integration State
+  const [aeroStatus, setAeroStatus] = useState<AeroAPIStatus | null>(null);
+  const [aeroKeyInput, setAeroKeyInput] = useState<string>('');
+  const [isAeroLoading, setIsAeroLoading] = useState<boolean>(false);
+  const [isAeroSaving, setIsAeroSaving] = useState<boolean>(false);
+  const [isAeroSyncing, setIsAeroSyncing] = useState<boolean>(false);
+  const [aeroSyncHub, setAeroSyncHub] = useState<string>('');
+  const [aeroSyncLimit, setAeroSyncLimit] = useState<number>(10);
 
   // General Status Alerts
   const [feedback, setFeedback] = useState<{ type: 'success' | 'danger'; message: string } | null>(null);
@@ -110,10 +124,54 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Fetch AeroAPI Status
+  const loadAeroStatus = async () => {
+    setIsAeroLoading(true);
+    try {
+      const statusData = await aeroApiService.getStatus();
+      setAeroStatus(statusData);
+    } catch {
+      showFeedback('danger', 'Failed to retrieve AeroAPI status.');
+    } finally {
+      setIsAeroLoading(false);
+    }
+  };
+
+  const handleSaveAeroKey = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aeroKeyInput.trim()) return;
+    setIsAeroSaving(true);
+    try {
+      const res = await aeroApiService.configureKey(aeroKeyInput.trim());
+      setAeroStatus(res);
+      setAeroKeyInput('');
+      showFeedback('success', `AeroAPI key updated! Status: ${res.status}`);
+    } catch {
+      showFeedback('danger', 'Failed to update AeroAPI key.');
+    } finally {
+      setIsAeroSaving(false);
+    }
+  };
+
+  const handleAdminLiveSync = async () => {
+    setIsAeroSyncing(true);
+    try {
+      const res = await aeroApiService.triggerAdminSync(aeroSyncHub || undefined, aeroSyncLimit);
+      showFeedback('success', res.message);
+      await loadAeroStatus();
+      await loadFlightsAndFleet();
+    } catch {
+      showFeedback('danger', 'Failed to execute live sync from AeroAPI.');
+    } finally {
+      setIsAeroSyncing(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'users') loadUsers();
     else if (activeTab === 'flights' || activeTab === 'fleet') loadFlightsAndFleet();
     else if (activeTab === 'audit') loadAuditLogs();
+    else if (activeTab === 'aeroapi') loadAeroStatus();
   }, [activeTab]);
 
   const showFeedback = (type: 'success' | 'danger', message: string) => {
@@ -250,6 +308,14 @@ export const AdminPage: React.FC = () => {
             }`}
           >
             <FileText className="w-4 h-4" /> Audit Logs
+          </button>
+          <button
+            onClick={() => setActiveTab('aeroapi')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${
+              activeTab === 'aeroapi' ? 'bg-brand text-white shadow-xs' : 'text-content-muted hover:text-content-primary'
+            }`}
+          >
+            <Radio className="w-4 h-4" /> AeroAPI Live Feed
           </button>
         </div>
       </div>
@@ -562,6 +628,171 @@ export const AdminPage: React.FC = () => {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: AeroAPI Integration & Live Feed */}
+      {activeTab === 'aeroapi' && (
+        <div className="space-y-6">
+          {/* Status & Diagnostics Card */}
+          <div className="bg-surface border border-border rounded-xl p-6 shadow-xs space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-content-primary">FlightAware AeroAPI (v4) Status</h2>
+                  {aeroStatus?.status === 'CONNECTED' ? (
+                    <Badge variant="low">CONNECTED & ACTIVE</Badge>
+                  ) : aeroStatus?.status === 'UNCONFIGURED' ? (
+                    <Badge variant="medium">SIMULATED FALLBACK ACTIVE</Badge>
+                  ) : (
+                    <Badge variant="critical">{aeroStatus?.status || 'INITIALIZING'}</Badge>
+                  )}
+                </div>
+                <p className="text-xs text-content-muted mt-1">
+                  Connects FlightGuard AI directly to FlightAware worldwide flight radar and schedule databases.
+                </p>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadAeroStatus}
+                isLoading={isAeroLoading}
+                className="font-bold text-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isAeroLoading ? 'animate-spin' : ''}`} />
+                Test Connection
+              </Button>
+            </div>
+
+            {/* Status Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 rounded-xl bg-surface-subtle border border-border">
+                <div className="text-xs font-semibold text-content-muted mb-1">Active API Key</div>
+                <div className="font-mono text-sm font-bold text-content-primary truncate">
+                  {aeroStatus?.masked_key || 'None (Using High-Fidelity Simulator)'}
+                </div>
+                <div className="text-[11px] text-content-muted mt-1">
+                  {aeroStatus?.is_configured ? 'Key loaded from environment / admin config' : 'Fallback simulation active'}
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-surface-subtle border border-border">
+                <div className="text-xs font-semibold text-content-muted mb-1">AeroAPI Endpoint</div>
+                <div className="font-mono text-xs font-bold text-brand truncate">
+                  {aeroStatus?.base_url || 'https://aeroapi.flightaware.com/aeroapi'}
+                </div>
+                <div className="text-[11px] text-content-muted mt-1">API Protocol: REST v4 JSON</div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-surface-subtle border border-border">
+                <div className="text-xs font-semibold text-content-muted mb-1">Database Flights Tracked</div>
+                <div className="text-2xl font-black text-content-primary">
+                  {aeroStatus?.total_flights_in_db ?? flights.length}
+                </div>
+                <div className="text-[11px] text-semantic-success font-medium">Scored with XGBoost AI Model</div>
+              </div>
+            </div>
+
+            {aeroStatus?.message && (
+              <div className="p-3 bg-cream-soft border border-cream-border rounded-lg text-xs text-secondary-hover font-medium flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-brand shrink-0" />
+                <span>{aeroStatus.message}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Update API Key Card & Trigger Live Ingestion */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Configure Key Form */}
+            <div className="bg-surface border border-border rounded-xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                <Key className="w-4 h-4 text-brand" />
+                <h3 className="text-sm font-bold text-content-primary">Configure AeroAPI Key</h3>
+              </div>
+              <p className="text-xs text-content-muted">
+                Enter your FlightAware AeroAPI personal or enterprise key. It will be validated against AeroAPI immediately and securely saved.
+              </p>
+
+              <form onSubmit={handleSaveAeroKey} className="space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-content-muted mb-1">AeroAPI Key</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter AeroAPI key"
+                    value={aeroKeyInput}
+                    onChange={(e) => setAeroKeyInput(e.target.value)}
+                    className="w-full px-3 py-2 bg-surface-subtle border border-border rounded-lg text-content-primary font-mono text-xs focus:outline-none focus:border-brand"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <Button variant="primary" size="sm" type="submit" isLoading={isAeroSaving} className="font-bold">
+                    Validate & Save Key
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            {/* Live Ingestion Trigger */}
+            <div className="bg-surface border border-border rounded-xl p-6 shadow-xs space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-border">
+                <Radio className="w-4 h-4 text-brand" />
+                <h3 className="text-sm font-bold text-content-primary">Sync Live Hub Departures</h3>
+              </div>
+              <p className="text-xs text-content-muted">
+                Pull real-time departures from AeroAPI (or realistic live radar) and automatically evaluate delay probabilities with FlightGuard's ML pipeline.
+              </p>
+
+              <div className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-content-muted mb-1">Airport Hub</label>
+                    <select
+                      value={aeroSyncHub}
+                      onChange={(e) => setAeroSyncHub(e.target.value)}
+                      className="w-full px-3 py-2 bg-surface-subtle border border-border rounded-lg text-content-primary font-medium focus:outline-none focus:border-brand"
+                    >
+                      <option value="">All Major Hubs (BLR, DEL, BOM, HYD)</option>
+                      <option value="BLR">BLR — Bengaluru</option>
+                      <option value="DEL">DEL — Delhi</option>
+                      <option value="BOM">BOM — Mumbai</option>
+                      <option value="HYD">HYD — Hyderabad</option>
+                      <option value="CCU">CCU — Kolkata</option>
+                      <option value="MAA">MAA — Chennai</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-content-muted mb-1">Max Flights per Hub</label>
+                    <select
+                      value={aeroSyncLimit}
+                      onChange={(e) => setAeroSyncLimit(Number(e.target.value))}
+                      className="w-full px-3 py-2 bg-surface-subtle border border-border rounded-lg text-content-primary font-medium focus:outline-none focus:border-brand"
+                    >
+                      <option value={5}>5 Departures</option>
+                      <option value={10}>10 Departures</option>
+                      <option value={20}>20 Departures</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex justify-end">
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={handleAdminLiveSync}
+                    isLoading={isAeroSyncing}
+                    className="font-bold"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isAeroSyncing ? 'animate-spin' : ''}`} />
+                    Sync Live Data Now
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
