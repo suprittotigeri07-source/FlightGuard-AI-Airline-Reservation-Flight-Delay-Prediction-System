@@ -15,12 +15,21 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('flightguard_user');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('flightguard_user');
+      return saved && saved !== 'undefined' && saved !== 'null' ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [token, setToken] = useState<string | null>(() => {
-    return localStorage.getItem('flightguard_token');
+    try {
+      const saved = localStorage.getItem('flightguard_token');
+      return saved && saved !== 'undefined' ? saved : null;
+    } catch {
+      return null;
+    }
   });
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
