@@ -53,3 +53,10 @@ def root_endpoint():
         "docs": f"{settings.API_V1_STR}/docs",
         "status": "online"
     }
+
+
+@app.get("/docs", include_in_schema=False)
+def docs_redirect():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url=f"{settings.API_V1_STR}/docs")
+
