@@ -20,6 +20,7 @@
 The platform provides a dual-interface experience:
 1. **Passenger Portal**: Interactive flight search, seat selection, booking management, and live delay notifications.
 2. **Operations & Admin Dashboard**: Flight dispatch analytics, high-risk flight delay heatmaps, fleet oversight, and AI prediction breakdown.
+3. **Live Project**: https://flight-guard-ai-airline-reservation.vercel.app/
 
 ---
 
