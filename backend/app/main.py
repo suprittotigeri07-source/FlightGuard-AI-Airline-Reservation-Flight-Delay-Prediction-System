@@ -19,6 +19,20 @@ app = FastAPI(
     redoc_url=f"{settings.API_V1_STR}/redoc"
 )
 
+# CORS Configuration
+cors_origins = [str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS != "*" else ["*"]
+if "https://flight-guard-ai-airline-reservation.vercel.app" not in cors_origins and cors_origins != ["*"]:
+    cors_origins.append("https://flight-guard-ai-airline-reservation.vercel.app")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Request ID Middleware
 @app.middleware("http")
 async def add_request_id_header(request: Request, call_next):
@@ -28,17 +42,6 @@ async def add_request_id_header(request: Request, call_next):
     response.headers["X-Request-ID"] = request_id
     return response
 
-# CORS Configuration
-if settings.CORS_ORIGINS:
-    cors_origins = [str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS != "*" else ["*"]
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=cors_origins,
-        allow_origin_regex=r"https://.*\.vercel\.app",
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
 # Startup Event: Ensure database tables are created and seeded
 @app.on_event("startup")
