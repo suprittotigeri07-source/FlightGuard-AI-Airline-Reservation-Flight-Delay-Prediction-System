@@ -40,6 +40,26 @@ if settings.CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+# Startup Event: Ensure database tables are created and seeded
+@app.on_event("startup")
+def on_startup():
+    import sys
+    if "pytest" in sys.modules or settings.APP_ENV == "test":
+        return
+    try:
+        import app.db.base
+        from app.db.session import engine, SessionLocal
+        from app.db.seed import seed_database
+        app.db.base.Base.metadata.create_all(bind=engine)
+        db = SessionLocal()
+        try:
+            seed_database(db)
+        finally:
+            db.close()
+        print("[Startup] Database tables initialized and seed verified.")
+    except Exception as e:
+        print(f"[Startup Warning] Database initialization: {e}")
+
 # Exception Handlers
 app.add_exception_handler(FlightGuardException, flightguard_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)

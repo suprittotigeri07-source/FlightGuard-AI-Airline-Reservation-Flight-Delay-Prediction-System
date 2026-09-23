@@ -12,8 +12,15 @@ class FlightGuardException(Exception):
 
 async def flightguard_exception_handler(request: Request, exc: FlightGuardException):
     request_id = getattr(request.state, "request_id", str(uuid.uuid4())[:8])
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
     return JSONResponse(
         status_code=exc.status_code,
+        headers=headers,
         content={
             "error": {
                 "code": exc.code,
@@ -25,13 +32,22 @@ async def flightguard_exception_handler(request: Request, exc: FlightGuardExcept
 
 
 async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    traceback.print_exc()
     request_id = getattr(request.state, "request_id", str(uuid.uuid4())[:8])
+    origin = request.headers.get("origin")
+    headers = {}
+    if origin:
+        headers["Access-Control-Allow-Origin"] = origin
+        headers["Access-Control-Allow-Credentials"] = "true"
+        headers["Vary"] = "Origin"
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        headers=headers,
         content={
             "error": {
                 "code": "INTERNAL_SERVER_ERROR",
-                "message": "An unexpected error occurred. Please try again later.",
+                "message": f"Server error: {str(exc)}",
                 "request_id": request_id
             }
         }
