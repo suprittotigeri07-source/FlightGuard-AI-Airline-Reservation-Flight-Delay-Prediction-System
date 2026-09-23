@@ -44,8 +44,10 @@ if settings.CORS_ORIGINS:
 app.add_exception_handler(FlightGuardException, flightguard_exception_handler)
 app.add_exception_handler(Exception, global_exception_handler)
 
-# API v1 Router
+# API v1 Router (Primary)
 app.include_router(api_router, prefix=settings.API_V1_STR)
+# API Router Fallback (also mounted at root for maximum client compatibility)
+app.include_router(api_router)
 
 
 @app.get("/")

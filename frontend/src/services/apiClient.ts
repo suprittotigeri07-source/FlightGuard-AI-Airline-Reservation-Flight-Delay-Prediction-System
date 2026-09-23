@@ -1,8 +1,23 @@
 /// <reference types="vite/client" />
 import axios from 'axios';
 
+const resolveApiBaseUrl = (): string => {
+  let url = (import.meta.env.VITE_API_BASE_URL || '/api/v1').trim();
+  // Strip trailing slashes
+  url = url.replace(/\/+$/, '');
+  // If user provided a host or URL without /api/v1, normalize it
+  if (!url.endsWith('/api/v1')) {
+    if (url.endsWith('/api')) {
+      url += '/v1';
+    } else if (!url.includes('/api/v1')) {
+      url += '/api/v1';
+    }
+  }
+  return url;
+};
+
 export const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
+  baseURL: resolveApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },

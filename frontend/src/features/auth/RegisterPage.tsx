@@ -47,12 +47,13 @@ export const RegisterPage: React.FC = () => {
       if (typeof err === 'object' && err !== null && 'response' in err) {
         const axiosErr = err as { response?: { status?: number; data?: { error?: { message?: string }; detail?: string } } };
         const status = axiosErr.response?.status;
-        const serverMsg = axiosErr.response?.data?.error?.message || (typeof axiosErr.response?.data?.detail === 'string' ? axiosErr.response.data.detail : null);
+        const rawDetail = typeof axiosErr.response?.data?.detail === 'string' ? axiosErr.response.data.detail : null;
+        const serverMsg = axiosErr.response?.data?.error?.message || (rawDetail && rawDetail !== 'Not Found' ? rawDetail : null);
 
         if (serverMsg) {
           setErrorMessage(serverMsg);
         } else if (status === 404 || status === 405) {
-          setErrorMessage(`API endpoint unreachable (HTTP ${status}). Please ensure your backend is deployed and VITE_API_BASE_URL is configured in your deployment.`);
+          setErrorMessage(`API endpoint unreachable (HTTP ${status}). Please check your backend deployment URL in VITE_API_BASE_URL.`);
         } else if (status && status >= 500) {
           setErrorMessage(`Backend server error (HTTP ${status}). Please try again shortly.`);
         } else {
