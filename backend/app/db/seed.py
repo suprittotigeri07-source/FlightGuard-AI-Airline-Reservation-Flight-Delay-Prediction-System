@@ -180,3 +180,43 @@ def seed_database(db: Session):
             )
             db.add(pred)
             db.commit()
+
+    # 5. Seed Roles & Default Users
+    from app.models.role import Role
+    from app.models.user import User
+    from app.core.security import get_password_hash
+
+    roles_data = [
+        {"name": "ADMIN", "description": "Administrator with full platform access"},
+        {"name": "PASSENGER", "description": "Passenger account for booking and flights"},
+        {"name": "OPERATIONS", "description": "Operations staff for telemetry and flights"},
+    ]
+    roles_map = {}
+    for r in roles_data:
+        existing_role = db.query(Role).filter(Role.name == r["name"]).first()
+        if not existing_role:
+            existing_role = Role(name=r["name"], description=r["description"])
+            db.add(existing_role)
+            db.commit()
+            db.refresh(existing_role)
+        roles_map[r["name"]] = existing_role
+
+    demo_users = [
+        {"email": "admin@flightguard.com", "password": "AdminPassword123!", "role": "ADMIN", "first_name": "Admin", "last_name": "Portal"},
+        {"email": "passenger@flightguard.com", "password": "PassengerPassword123!", "role": "PASSENGER", "first_name": "John", "last_name": "Doe"},
+        {"email": "operations@flightguard.com", "password": "OperationsPassword123!", "role": "OPERATIONS", "first_name": "Flight", "last_name": "Ops"},
+    ]
+    for u in demo_users:
+        existing_u = db.query(User).filter(User.email == u["email"]).first()
+        if not existing_u:
+            new_u = User(
+                email=u["email"],
+                hashed_password=get_password_hash(u["password"]),
+                first_name=u["first_name"],
+                last_name=u["last_name"],
+                role_id=roles_map[u["role"]].id,
+                is_active=True
+            )
+            db.add(new_u)
+            db.commit()
+

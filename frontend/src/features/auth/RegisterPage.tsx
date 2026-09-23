@@ -45,10 +45,21 @@ export const RegisterPage: React.FC = () => {
       navigate('/', { replace: true });
     } catch (err: unknown) {
       if (typeof err === 'object' && err !== null && 'response' in err) {
-        const axiosErr = err as { response?: { data?: { error?: { message?: string } } } };
-        setErrorMessage(axiosErr.response?.data?.error?.message || 'Registration failed. Please try again.');
+        const axiosErr = err as { response?: { status?: number; data?: { error?: { message?: string }; detail?: string } } };
+        const status = axiosErr.response?.status;
+        const serverMsg = axiosErr.response?.data?.error?.message || (typeof axiosErr.response?.data?.detail === 'string' ? axiosErr.response.data.detail : null);
+
+        if (serverMsg) {
+          setErrorMessage(serverMsg);
+        } else if (status === 404 || status === 405) {
+          setErrorMessage(`API endpoint unreachable (HTTP ${status}). Please ensure your backend is deployed and VITE_API_BASE_URL is configured in your deployment.`);
+        } else if (status && status >= 500) {
+          setErrorMessage(`Backend server error (HTTP ${status}). Please try again shortly.`);
+        } else {
+          setErrorMessage('Registration failed. Please check the entered information and try again.');
+        }
       } else {
-        setErrorMessage('Unable to connect to FlightGuard server. Please try again.');
+        setErrorMessage('Unable to connect to FlightGuard backend server. Please verify your network and backend URL.');
       }
     }
   };

@@ -30,9 +30,11 @@ async def add_request_id_header(request: Request, call_next):
 
 # CORS Configuration
 if settings.CORS_ORIGINS:
+    cors_origins = [str(origin) for origin in settings.CORS_ORIGINS] if settings.CORS_ORIGINS != "*" else ["*"]
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.CORS_ORIGINS],
+        allow_origins=cors_origins,
+        allow_origin_regex=r"https://.*\.vercel\.app",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
